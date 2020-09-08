@@ -1,87 +1,75 @@
 /* eslint-disable consistent-return */
+const escape = require('escape-html');
 const Card = require('../models/card');
-const { validationError } = require('./validationError');
+const NotFoundError = require('../errors/not-found-err');
+const ProhibitedError = require('../errors/prohibited-err');
 
-module.exports.getCards = (req, res) => {
-  Card.find({})
-    .then((cards) => res.send({ data: cards }))
-    .catch((err) => res.status(500).send({ message: err.message }));
+module.exports.getCards = async (req, res, next) => {
+  try {
+    const card = await Card.find({});
+    return res.send(card);
+  } catch (err) {
+    return next(err);
+  }
 };
 
-module.exports.createCard = (req, res) => {
+module.exports.createCard = async (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user._id;
 
-  Card.create({ name, link, owner })
-    .then((card) => res.status(201).send({ data: card }))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(400);
-      } else {
-        res.status(500);
-      }
-      res.send({ message: err.message });
-    });
+  try {
+    const card = await Card.create({ name: escape(name), link: escape(link), owner });
+    return res.send(card);
+  } catch (err) {
+    return next(err);
+  }
 };
 
-module.exports.deleteCard = async (req, res) => {
+module.exports.deleteCard = async (req, res, next) => {
   const { cardId } = req.params;
   const userId = req.user._id;
 
-  await Card.findById(cardId)
-    .orFail(() => {
-      res
-        .status(404)
-        .send({ message: `Неправильный ID=${cardId} карточки!` });
-    });
-  Card.findOneAndRemove({ _id: cardId, owner: userId })
-    .then((card) => {
-      if (!card) {
-        return res
-          .status(403)
-          .send({ message: 'Это не ваша карточка!' });
-      }
-      res.send({ data: card });
-    })
-    .catch((err) => validationError(err, req, res));
+  try {
+    const card = await Card.findById(cardId)
+      .orFail(() => new NotFoundError('Такой карточки не существует'));
+
+    if (userId !== card.owner.toString()) {
+      throw new ProhibitedError('Невозможно удалить карточку! Карточка принадлежит не Вам');
+    }
+    const cardRemove = await Card.findOneAndRemove({ _id: cardId, owner: userId });
+    return res.send(cardRemove);
+  } catch (err) {
+    return next(err);
+  }
 };
 
-module.exports.likeCard = (req, res) => {
+module.exports.likeCard = async (req, res, next) => {
   const { cardId } = req.params;
 
-  Card.findByIdAndUpdate(
-    cardId,
-    { $addToSet: { likes: req.user._id } },
-    { new: true },
-  )
-    .orFail()
-    .then((card) => res.send({ data: card }))
-    .catch((err) => {
-      if (err.name === 'DocumentNotFoundError') {
-        res.status(404);
-      } else {
-        res.status(500);
-      }
-      res.send({ message: err.message });
-    });
+  try {
+    const card = await Card.findByIdAndUpdate(
+      cardId,
+      { $addToSet: { likes: req.user._id } },
+      { new: true },
+    )
+      .orFail(() => new NotFoundError('Такой карточки не существует'));
+    return res.send(card);
+  } catch (err) {
+    return next(err);
+  }
 };
 
-module.exports.dislikeCard = (req, res) => {
+module.exports.dislikeCard = async (req, res, next) => {
   const { cardId } = req.params;
-
-  Card.findByIdAndUpdate(
-    cardId,
-    { $pull: { likes: req.user._id } },
-    { new: true },
-  )
-    .orFail()
-    .then((card) => res.send({ data: card }))
-    .catch((err) => {
-      if (err.name === 'DocumentNotFoundError') {
-        res.status(404);
-      } else {
-        res.status(500);
-      }
-      res.send({ message: err.message });
-    });
+  try {
+    const card = await Card.findByIdAndUpdate(
+      cardId,
+      { $pull: { likes: req.user._id } },
+      { new: true },
+    )
+      .orFail(() => new NotFoundError('Такой карточки не существует'));
+    return res.send(card);
+  } catch (err) {
+    return next(err);
+  }
 };
