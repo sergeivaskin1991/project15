@@ -13,7 +13,7 @@ signup.post('/', celebrate({
     email: Joi.string().required().email(),
     password: Joi.string().pattern(
       new RegExp('^.*(?=.{8,})(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!&$%#? "])(?=\\S+$).*$'),
-    ).message('Пароль должен содержать строчные, прописные буквы, цифры, спецсимволы. Минимум 8 символов'),
+    ).message('Пароль должен содержать строчные, прописные буквы, цифры, спецсимволы. Минимальное значение 8 символов'),
     repeat_password: Joi.ref('password'),
   }),
 }), createUser);

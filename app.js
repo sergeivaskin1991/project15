@@ -6,9 +6,9 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const { errors } = require('celebrate');
 const cookieParser = require('cookie-parser');
+const { signup, signin } = require('./routes/auth');
 const { auth } = require('./middlewares/auth');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
-const { createUser, login } = require('./controllers/auth');
 const NotFoundErrorURL = require('./middlewares/NotFoundErrorURL');
 const ValidationError = require('./middlewares/ValidationError');
 require('dotenv').config();
@@ -49,8 +49,8 @@ app.get('/crash-test', () => {
   }, 0);
 });
 
-app.post('/signin', login);
-app.post('/signup', createUser);
+app.use('/signin', signin);
+app.use('/signup', signup);
 
 app.use(auth);
 app.use('/users', require('./routes/users'));
