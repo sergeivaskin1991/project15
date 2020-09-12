@@ -27,11 +27,11 @@ module.exports.createUser = async (req, res, next) => {
   }
 };
 
-module.exports.login = (req, res, next) => {
+module.exports.login = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    const user = User.findUserByCredentials(email, password);
+    const user = await User.findUserByCredentials(email, password);
     const { NODE_ENV, JWT_SECRET = 'dev-key' } = process.env;
     const token = jwt.sign(
       { _id: user._id },
